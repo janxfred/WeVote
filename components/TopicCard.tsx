@@ -8,30 +8,17 @@ import { Progress } from './ui/progress';
 import { Clock, User, Vote, Share, Eye } from 'lucide-react';
 import { VoteResultBar } from './VoteResultBar';
 
-interface Topic {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-  user: { name: string; icon: string | null };
-  options: Array<{ id: number; text: string; votes: number }>;
-  totalVotes: number;
-  createdAt: string;
-  expiresAt: string;
-  hasVoted: boolean;
-  userVote?: number;
-  images?: string[];
-}
+import type { Topic as TTopic } from '../src/types'
 
 interface TopicCardProps {
-  topic: Topic;
-  onVote: (topicId: number, optionId: number) => void;
+  topic: TTopic;
+  onVote: (topicId: any, optionId: any) => void;
 }
 
 export function TopicCard({ topic, onVote }: TopicCardProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(topic.hasVoted);
-  const [userVote, setUserVote] = useState(topic.userVote);
+  const [userVote, setUserVote] = useState(topic.userVote as any);
 
   const handleVote = () => {
     if (selectedOption && !hasVoted) {
@@ -87,7 +74,7 @@ export function TopicCard({ topic, onVote }: TopicCardProps) {
     });
   };
 
-  const isExpired = new Date(topic.expiresAt) < new Date();
+  const isExpired = topic.expiresAt ? new Date(topic.expiresAt) < new Date() : false;
   const canVote = !hasVoted && !isExpired;
   const canSeeResults = hasVoted || isExpired;
 
@@ -155,7 +142,7 @@ export function TopicCard({ topic, onVote }: TopicCardProps) {
                   <User className="w-3 h-3" />
                 </AvatarFallback>
               </Avatar>
-              <span>{topic.user.name}</span>
+              <span>{topic.user?.name || '匿名'}</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
@@ -174,7 +161,7 @@ export function TopicCard({ topic, onVote }: TopicCardProps) {
           <div className="space-y-3">
             <h4 className="font-medium">選択肢を選んで投票してください</h4>
             <div className="space-y-2">
-              {topic.options.map((option) => (
+              {topic.options?.map((option) => (
                 <label
                   key={option.id}
                   className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
@@ -187,7 +174,7 @@ export function TopicCard({ topic, onVote }: TopicCardProps) {
                     onChange={() => setSelectedOption(option.id)}
                     className="w-4 h-4"
                   />
-                  <span className="flex-1">{option.text}</span>
+                  <span className="flex-1">{(option as any).label}</span>
                 </label>
               ))}
             </div>
@@ -215,15 +202,15 @@ export function TopicCard({ topic, onVote }: TopicCardProps) {
             <h4 className="font-medium">投票結果</h4>
             
             {/* バーグラフ形式の結果表示 */}
-            <VoteResultBar options={topic.options} totalVotes={topic.totalVotes} userVote={userVote} />
+            <VoteResultBar options={topic.options || []} totalVotes={topic.totalVotes || 0} userVote={userVote} />
             
             {/* 詳細結果 */}
             <div className="space-y-2">
-              {topic.options.map((option) => (
+              {topic.options?.map((option) => (
                 <div key={option.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <span className={userVote === option.id ? 'font-medium text-black' : ''}>
-                      {option.text}
+                      {(option as any).label}
                     </span>
                     {userVote === option.id && (
                       <Badge variant="outline" className="text-xs">あなたの投票</Badge>

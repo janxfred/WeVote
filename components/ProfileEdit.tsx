@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger 
 } from './ui/alert-dialog';
 import { ArrowLeft, Upload, User, AlertTriangle, Trash2 } from 'lucide-react';
+import { supabase } from '../src/lib/supabaseClient'
 
 type Page = 'home' | 'create' | 'mypage' | 'profile-edit';
 
@@ -87,24 +88,23 @@ export function ProfileEdit({ user, onNavigate, onUpdateUser }: ProfileEditProps
     setIsSubmitting(true);
 
     try {
-      // 実際のアプリでは以下の処理を行う：
-      // 1. 画像ファイルがある場合はアップロード
-      // 2. ユーザー情報をAPIで更新
-      
-      // モック処理
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // upload icon if present (placeholder: using public url later)
+      let avatar_url = iconPreview;
+
+      // upsert into users table by id (if your Supabase users use different id, adapt accordingly)
+      const payload: any = { id: user.id, name: formData.name, avatar_url };
+      const { data, error } = await supabase.from('users').upsert(payload).select('*').single();
+      if (error) throw error;
+
       const updatedUser: User = {
         ...user,
-        name: formData.name,
-        iconUrl: iconPreview
+        name: data.name,
+        iconUrl: data.avatar_url
       };
-      
+
       onUpdateUser(updatedUser);
       onNavigate('mypage');
-      
-      console.log('プロフィール更新:', { name: formData.name, iconFile: formData.iconFile });
-      
+      console.log('プロフィール更新:', data);
     } catch (error) {
       console.error('プロフィール更新エラー:', error);
     } finally {
