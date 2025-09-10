@@ -1,26 +1,26 @@
-import React from "react";
-import { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { TopicCard } from './TopicCard';
 import { Plus, Filter } from 'lucide-react';
+import { supabase } from '../src/lib/supabaseClient'
 
 type Page = 'home' | 'create' | 'mypage' | 'profile-edit';
 type Category = 'all' | '恋愛' | '政治';
 type SortBy = 'new' | 'votes';
 
 interface Topic {
-  id: number;
+  id: any;
   title: string;
   description: string;
-  category: string;
-  user: { name: string; icon: string | null };
-  options: Array<{ id: number; text: string; votes: number }>;
-  totalVotes: number;
-  createdAt: string;
-  expiresAt: string;
-  hasVoted: boolean;
+  category?: string | null;
+  user?: { name?: string; icon?: string | null } | null;
+  options?: Array<{ id: any; label: string; votes?: number }>;
+  totalVotes?: number;
+  createdAt?: string;
+  expiresAt?: string;
+  hasVoted?: boolean;
   userVote?: number;
 }
 
@@ -38,22 +38,53 @@ interface TopicListProps {
   onVote: (topicId: number, optionId: number) => void;
 }
 
-export function TopicList({ topics, onNavigate, user, onVote }: TopicListProps) {
-  const [category, setCategory] = useState<Category>('all');
-  const [sortBy, setSortBy] = useState<SortBy>('new');
+export function TopicList({ topics: initialTopics = [], onNavigate, user, onVote }: TopicListProps) {
+  const [category, setCategory] = useState<Category>('all')
+  const [sortBy, setSortBy] = useState<SortBy>('new')
+  const [topics, setTopics] = useState<Topic[]>(initialTopics)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // if topics were not passed in or empty, fetch from Supabase
+    if (!initialTopics || initialTopics.length === 0) {
+      fetchTopics()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function fetchTopics() {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.from('topics').select('*, topic_options(*)').order('created_at', { ascending: false })
+      if (error) throw error
+      const mapped = (data || []).map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        category: t.category,
+        options: (t.topic_options || []).map((o: any) => ({ id: o.id, label: o.label, votes: o.votes })),
+        createdAt: t.created_at
+      }))
+      setTopics(mapped)
+    } catch (err) {
+      console.error('Failed to fetch topics', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredAndSortedTopics = topics
     .filter(topic => category === 'all' || topic.category === category)
     .sort((a, b) => {
       if (sortBy === 'new') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
       } else {
-        return b.totalVotes - a.totalVotes;
+        return (b.totalVotes || 0) - (a.totalVotes || 0)
       }
-    });
+    })
 
   return (
-  <div className="space-y-6">
+    <div className="space-y-6">
       {/* ヘッダー部分 */}
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
